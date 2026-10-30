@@ -1,0 +1,121 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>王者荣耀 · 位置答题闯关</title><style>
+#app button{font:inherit;cursor:pointer}
+.bar{height:6px;border-radius:4px;background:#f2f3f5;overflow:hidden}
+.bar>div{height:100%;border-radius:4px;transition:width .1s linear}
+.opt{display:block;width:100%;text-align:left;padding:12px 16px;margin:8px 0;border:1px solid #e3e4e6;border-radius:10px;background:transparent;color:#1a1a1a;transition:all .15s ease-out}
+.opt:hover:not(:disabled){background:#f2f3f5}
+.opt:disabled{cursor:default}
+.opt.correct{border-color:#18a058;background:color-mix(in srgb,#18a058 12%,transparent)}
+.opt.wrong{border-color:#e5484d;background:color-mix(in srgb,#e5484d 12%,transparent)}
+.chip{display:inline-block;padding:2px 10px;border-radius:6px;font-size:12px}
+.primary{padding:10px 24px;border:none;border-radius:10px;background:#1a1a1a;color:#fff;font-weight:500}
+.ghost{padding:10px 24px;border:1px solid #e3e4e6;border-radius:10px;background:transparent;color:#1a1a1a}
+</style></head><body style="margin:0;background:#fafafa"><div id="app" style="font-family:-apple-system,'PingFang SC','Microsoft YaHei',sans-serif;max-width:640px;margin:0 auto;padding:16px;"><div id="screen"></div><script>
+const LEVELS=[
+ {name:"第1关 · 青铜",desc:"上路与野区基础 · 曜 / 刘备 / 橘右京 / 张飞 / 吕布 / 李元芳",need:4},
+ {name:"第2关 · 白银",desc:"打野节奏 · 惩击 / 兰陵王 / 阿古朵 / 镜 / 赵云",need:4},
+ {name:"第3关 · 黄金",desc:"战士对抗路 · 铠 / 典韦 / 程咬金 / 夏侯惇 / 苏烈",need:4},
+ {name:"第4关 · 铂金",desc:"辅助与团战 · 牛魔 / 鬼谷子 / 太乙真人 / 蔡文姬 / 盾山 / 庄周",need:4},
+ {name:"第5关 · 王者",desc:"峡谷综合 · 主宰 / 风暴龙王 / 云缨 / 澜 / 貂蝉",need:4}];
+const BANK=[
+ [ {q:"刘备的霰弹枪普攻有什么特点？",o:["距离越远伤害越高","距离越近伤害越高","必定暴击","附带法术伤害"],a:1},
+   {q:"曜的技能命中敌人后，下一次释放的技能会？",o:["冷却时间翻倍","被强化","消耗双倍法力","无法释放"],a:1},
+   {q:"张飞未变身时的一技能叫什么？",o:["守护机关","画地为牢","狂兽血性","横扫千军"],a:1},
+   {q:"橘右京这个英雄最初出自哪款经典游戏？",o:["拳皇","侍魂","街霸","铁拳"],a:1},
+   {q:"吕布的一技能「方天画斩」命中敌方英雄后，武器会？",o:["断裂消失","进入附魔状态，后续附带真实伤害","攻击距离变短","攻速降低"],a:1},
+   {q:"李元芳的被动「密探谛听」可以？",o:["周期性探查周围敌方英雄的踪迹","免疫控制","大幅增加移速","回复生命"],a:0}],
+ [ {q:"打野携带的召唤师技能「惩击」主要作用是？",o:["沉默敌方英雄","对野怪造成高额真实伤害并帮助击杀","眩晕防御塔","回复法力"],a:1},
+   {q:"兰陵王进入隐身状态使用的是几技能？",o:["一技能","二技能","三技能","四技能"],a:3},
+   {q:"赵云的被动「龙鸣」效果是？",o:["攻击附带灼烧","生命值越低受到的伤害越低","普攻回复生命","技能无消耗"],a:1},
+   {q:"阿古朵收服野怪的独特方式通常被称为？",o:["吞噬放生","剑刃封印","金币收买","召唤亡灵"],a:0},
+   {q:"镜使用技能命中后会召唤什么协助作战？",o:["飞剑","镜像分身","机关兽","灵体狼"],a:1},
+   {q:"王昭君的大招叫什么名字？",o:["凛冬已至","冰霜新星","暴风雪","寒冰屏障"],a:0}],
+ [ {q:"铠开启大招「不灭魔躯」后会？",o:["立即回城","进入强化状态，大幅提升战斗力","隐身3秒","清除所有装备效果"],a:1},
+   {q:"典韦的被动通过什么方式叠加攻击力？",o:["普攻命中","击败英雄或助攻","释放技能","受到伤害"],a:1},
+   {q:"程咬金的被动「舍生忘死」效果是？",o:["生命值越低攻击力越高","免疫死亡一次","攻速恒定翻倍","自带吸血"],a:0},
+   {q:"夏侯惇的被动在生命值较低时能提供什么？",o:["护盾","生命回复","移速加成","冷却缩减"],a:1},
+   {q:"苏烈的招牌机制是？",o:["全图传送","死亡后原地复活","复制技能","永久隐身"],a:1},
+   {q:"后羿连续普攻叠满层数后，下一次普攻会？",o:["被强化","消耗生命","锁定防御塔","无变化"],a:0}],
+ [ {q:"牛魔的大招「山崩地裂」效果是？",o:["治疗队友","击飞并减速范围内敌人","偷取金币","沉默全图"],a:1},
+   {q:"鬼谷子的二技能「万物有灵」可以将周围敌人？",o:["拉向自己并眩晕","传送到高地","变成野怪","清除增益"],a:0},
+   {q:"太乙真人的大招「大变活人」可以？",o:["复活自己和附近队友","秒杀主宰","全图位移","复制装备"],a:0},
+   {q:"蔡文姬的一技能「思无邪」主要作用是？",o:["加速追击","治疗周围队友","眩晕敌人","开启视野"],a:1},
+   {q:"盾山的招牌机制是？",o:["飞行","举盾抵挡飞行物","分身作战","无限隐身"],a:1},
+   {q:"庄周的大招「天人合一」能为队友提供？",o:["大量金币","解除并免疫控制","攻击翻倍","隐身"],a:1}],
+ [ {q:"团队击败主宰后会获得什么助力？",o:["主宰先锋","全员复活","金币翻倍","永久免控"],a:0},
+   {q:"风暴龙王首次登场是在开局后多少分钟？",o:["10分钟","15分钟","20分钟","25分钟"],a:2},
+   {q:"暴君主要为团队提供哪类增益？",o:["攻击类增益","移速类增益","金币类增益","免控类增益"],a:0},
+   {q:"云缨使用技能后会积攒什么，从而强化普攻？",o:["剑气","枪意","怒气","月光"],a:1},
+   {q:"澜在河道或水域中会有什么优势？",o:["潜行并加速","攻击力翻倍","免疫伤害","立即回城"],a:0},
+   {q:"貂蝉的被动叠满4层后会触发？",o:["真实伤害爆炸并减速","全图传送","秒杀小兵","沉默自己"],a:0}]];
+const TIME=120;
+let S;
+function reset(){S={lv:0,q:0,correctInLevel:0,wrongInLevel:0,order:BANK.map(l=>shuffle(l))};}
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+const scr=document.getElementById('screen');
+function showHome(){
+ scr.innerHTML='<div style="text-align:center;padding:48px 16px">'
+ +'<div style="font-size:28px;font-weight:500;margin-bottom:8px">王者荣耀 · 位置闯关</div>'
+ +'<div style="color:var(--kimi-color-text-secondary);margin-bottom:8px">打野 · 辅助 · 战士 主题</div>'
+ +'<div style="color:var(--kimi-color-text-tertiary);font-size:14px;margin-bottom:24px">共5关 · 每关6题 · 答对4题立即晋级<br>每题限时120秒 · 每关答错满3题（含超时）闯关失败，从第1关重新挑战</div>'
+ +'<button class="primary" onclick="start()">开始闯关</button></div>';}
+function start(){reset();showQ();}
+function showQ(){
+ const L=LEVELS[S.lv],Q=S.order[S.lv][S.q];
+ scr.innerHTML=''
+ +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">'
+ +'<span class="chip" style="background:var(--kimi-color-surface-muted)">'+L.name+' · 第'+(S.q+1)+'/6题</span>'
+ +'<span style="font-size:14px;color:var(--kimi-color-text-secondary)">对 <b style="font-variant-numeric:tabular-nums;color:var(--kimi-color-positive)">'+S.correctInLevel+'</b>/4 · 错 <b style="font-variant-numeric:tabular-nums;color:var(--kimi-color-danger)">'+S.wrongInLevel+'</b>/3</span></div>'
+ +'<div style="font-size:13px;color:var(--kimi-color-text-tertiary);margin-bottom:12px">'+L.desc+'</div>'
+ +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'
+ +'<span style="font-size:12px;color:var(--kimi-color-text-quaternary)">倒计时</span>'
+ +'<span id="tnum" style="font-size:14px;font-variant-numeric:tabular-nums;color:var(--kimi-color-text-secondary)">120s</span></div>'
+ +'<div class="bar" style="margin-bottom:16px"><div id="timer" style="width:100%;background:var(--kimi-color-accent)"></div></div>'
+ +'<div style="font-size:17px;font-weight:500;margin-bottom:16px">'+Q.q+'</div>'
+ +Q.o.map((t,i)=>'<button class="opt" onclick="pick(this,'+i+')"><span style="color:var(--kimi-color-text-tertiary);margin-right:8px">'+('ABCD'[i])+'</span>'+t+'</button>').join('')
+ +'<div id="fb" style="min-height:24px;margin-top:8px;font-size:14px"></div>';
+ let t=TIME;const bar=document.getElementById('timer'),num=document.getElementById('tnum');
+ S.iv=setInterval(()=>{t-=0.1;bar.style.width=(t/TIME*100)+'%';num.textContent=Math.ceil(t)+'s';
+  if(t<=10){bar.style.background='var(--kimi-color-danger)';num.style.color='var(--kimi-color-danger)';}
+  if(t<=0){clearInterval(S.iv);timeout();}},100);}
+function lockOpts(){document.querySelectorAll('.opt').forEach(b=>b.disabled=true);}
+function reveal(Q){document.querySelectorAll('.opt')[Q.a].classList.add('correct');}
+function pick(el,i){
+ clearInterval(S.iv);
+ const Q=S.order[S.lv][S.q];
+ lockOpts();reveal(Q);
+ if(i===Q.a){S.correctInLevel++;
+  document.getElementById('fb').innerHTML='<span style="color:var(--kimi-color-positive)">回答正确（'+S.correctInLevel+'/4），继续加油</span>';
+  if(S.correctInLevel>=4)setTimeout(levelPass,900);else setTimeout(nextQ,900);}
+ else{S.wrongInLevel++;el.classList.add('wrong');
+  document.getElementById('fb').innerHTML='<span style="color:var(--kimi-color-danger)">回答错误，正确答案：'+('ABCD'[Q.a])+'（已错'+S.wrongInLevel+'/3）</span>';
+  if(S.wrongInLevel>=3)setTimeout(fail,1300);else setTimeout(nextQ,1300);}}
+function timeout(){
+ clearInterval(S.iv);
+ const Q=S.order[S.lv][S.q];
+ lockOpts();reveal(Q);
+ S.wrongInLevel++;
+ document.getElementById('fb').innerHTML='<span style="color:var(--kimi-color-danger)">超时未答（已错'+S.wrongInLevel+'/3）</span>';
+ if(S.wrongInLevel>=3)setTimeout(fail,1300);else setTimeout(nextQ,1300);}
+function nextQ(){S.q++;showQ();}
+function levelPass(){
+ if(S.lv===4)return win();
+ const passed=LEVELS[S.lv];
+ scr.innerHTML='<div style="text-align:center;padding:48px 16px">'
+ +'<div style="font-size:28px;font-weight:500;margin-bottom:8px">'+passed.name+' · 通过</div>'
+ +'<div style="color:var(--kimi-color-text-secondary);margin-bottom:24px">答对'+S.correctInLevel+'题，准备迎接更高挑战</div>'
+ +'<button class="primary" onclick="nextLevel()">进入'+LEVELS[S.lv+1].name+'</button></div>';}
+function nextLevel(){S.lv++;S.q=0;S.correctInLevel=0;S.wrongInLevel=0;showQ();}
+function fail(){
+ scr.innerHTML='<div style="text-align:center;padding:48px 16px">'
+ +'<div style="font-size:28px;font-weight:500;margin-bottom:8px;color:var(--kimi-color-danger)">闯关失败</div>'
+ +'<div style="color:var(--kimi-color-text-secondary);margin-bottom:24px">'+LEVELS[S.lv].name+'答错满3题，将从第1关重新开始</div>'
+ +'<button class="primary" onclick="start()">重新挑战</button>'
+ +'<button class="ghost" onclick="showHome()" style="margin-left:8px">返回首页</button></div>';}
+function win(){
+ scr.innerHTML='<div style="text-align:center;padding:48px 16px">'
+ +'<div style="font-size:28px;font-weight:500;margin-bottom:8px">恭喜通关！</div>'
+ +'<div style="color:var(--kimi-color-text-secondary);margin-bottom:24px">五关全部通过，你就是峡谷百科级玩家</div>'
+ +'<button class="primary" onclick="start()">再来一轮</button></div>';}
+reset();showHome();
+</script></div></body></html>
